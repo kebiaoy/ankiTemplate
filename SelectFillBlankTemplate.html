@@ -246,9 +246,8 @@
         }
         
         const field = questionData.inputFields[index];
-        // 对选中的索引按照A、B、C顺序排序
-        const sortedIndices = [...result.SelectValue].sort((a, b) => a - b);
-        const selectedTexts = sortedIndices.map(i => {
+        // SelectValue数组已经按照选项顺序排序，直接使用
+        const selectedTexts = result.SelectValue.map(i => {
             const optionLabel = String.fromCharCode(65 + i); // A, B, C, D...
             return `${optionLabel}. ${field.options[i]}`;
         }).filter(Boolean);
@@ -338,9 +337,12 @@
                     if (input.checked) {
                         if (!SelectInResult[index].SelectValue.includes(optionIndex)) {
                             SelectInResult[index].SelectValue.push(optionIndex);
+                            // 添加后按照选项顺序排序
+                            SelectInResult[index].SelectValue.sort((a, b) => a - b);
                         }
                     } else {
                         SelectInResult[index].SelectValue = SelectInResult[index].SelectValue.filter(v => v !== optionIndex);
+                        // 移除后数组自然保持排序状态
                     }
                 }
                 

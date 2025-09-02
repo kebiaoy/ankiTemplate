@@ -244,11 +244,11 @@
         
         if (field.type === 'select') {
             const isMultiple = field.selectType === 'a';
-            return `<span class="select-blank" data-index="${index}" data-type="${field.selectType}" data-multiple="${isMultiple}" onclick="showDropdown(${index}, this)">${getDisplayText(index)}</span>`;
+            return `<span id="input-${index}" class="select-blank" data-index="${index}" data-type="${field.selectType}" data-multiple="${isMultiple}" onclick="showDropdown(${index}, this)">${getDisplayText(index)}</span>`;
         } else if (field.type === 'number') {
-            return `<input type="text" class="input-blank number-input" data-index="${index}" data-type="number" placeholder="${field.placeholder}" oninput="handleNumberInput(${index}, this)" onblur="saveInputValue(${index}, this.value)">`;
+            return `<input id="input-${index}" type="text" class="input-blank number-input" data-index="${index}" data-type="number" placeholder="${field.placeholder}" oninput="handleNumberInput(${index}, this)" onblur="saveInputValue(${index}, this.value)">`;
         } else if (field.type === 'text') {
-            return `<input type="text" class="input-blank" data-index="${index}" data-type="text" placeholder="${field.placeholder}" oninput="handleTextInput(${index}, this)" onblur="saveInputValue(${index}, this.value)">`;
+            return `<input id="input-${index}" type="text" class="input-blank" data-index="${index}" data-type="text" placeholder="${field.placeholder}" oninput="handleTextInput(${index}, this)" onblur="saveInputValue(${index}, this.value)">`;
         }
         
         return '';
@@ -394,6 +394,9 @@
             dropdown.style.display = 'none';
             dropdown.remove();
         });
+        if(currentOpenDropdown == null){
+            return;
+        }
         currentOpenDropdown = null;
         
         // 菜单关闭后更新所有选择框的显示文本
@@ -529,7 +532,7 @@
         
         // 初始化SelectInResult
         initializeSelectInResult(questionData.inputFields);
-        
+
         // 从持久化存储中恢复状态
         if (Persistence.isAvailable()) {
             const saved = Persistence.getItem('SelectInResult');

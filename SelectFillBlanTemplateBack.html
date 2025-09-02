@@ -1,0 +1,334 @@
+<script>
+    // v1.1.8 - https://github.com/SimonLammer/anki-persistence/blob/584396fea9dea0921011671a47a0fdda19265e62/script.js
+    if(void 0===window.Persistence){var e="github.com/SimonLammer/anki-persistence/",t="_default";if(window.Persistence_sessionStorage=function(){var i=!1;try{"object"==typeof window.sessionStorage&&(i=!0,this.clear=function(){for(var t=0;t<sessionStorage.length;t++){var i=sessionStorage.key(t);0==i.indexOf(e)&&(sessionStorage.removeItem(i),t--)}},this.setItem=function(i,n){void 0==n&&(n=i,i=t),sessionStorage.setItem(e+i,JSON.stringify(n))},this.getItem=function(i){return void 0==i&&(i=t),JSON.parse(sessionStorage.getItem(e+i))},this.removeItem=function(i){void 0==i&&(i=t),sessionStorage.removeItem(e+i)},this.getAllKeys=function(){for(var t=[],i=Object.keys(sessionStorage),n=0;n<i.length;n++){var s=i[n];0==s.indexOf(e)&&t.push(s.substring(e.length,s.length))}return t.sort()})}catch(n){}this.isAvailable=function(){return i}},window.Persistence_windowKey=function(i){var n=window[i],s=!1;"object"==typeof n&&(s=!0,this.clear=function(){n[e]={}},this.setItem=function(i,s){void 0==s&&(s=i,i=t),n[e][i]=s},this.getItem=function(i){return void 0==i&&(i=t),void 0==n[e][i]?null:n[e][i]},this.removeItem=function(i){void 0==i&&(i=t),delete n[e][i]},this.getAllKeys=function(){return Object.keys(n[e])},void 0==n[e]&&this.clear()),this.isAvailable=function(){return s}},window.Persistence=new Persistence_sessionStorage,Persistence.isAvailable()||(window.Persistence=new Persistence_windowKey("py")),!Persistence.isAvailable()){var i=window.location.toString().indexOf("title"),n=window.location.toString().indexOf("main",i);i>0&&n>0&&n-i<10&&(window.Persistence=new Persistence_windowKey("qt"))}}
+</script>
+
+<style>
+    .select-blank {
+        display: inline-block;
+        min-width: 80px;
+        padding: 4px 8px;
+        border: 2px solid #4A90E2;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        cursor: default;
+        text-align: center;
+        position: relative;
+        min-height: 20px;
+        margin: 0 2px;
+    }
+
+    .input-blank {
+        display: inline-block;
+        min-width: 80px;
+        padding: 4px 8px;
+        border: 2px solid #4A90E2;
+        border-radius: 4px;
+        background-color: white;
+        font-size: 14px;
+        margin: 0 2px;
+        cursor: default;
+    }
+
+    .input-blank:disabled {
+        background-color: #f8f9fa;
+        cursor: default;
+        opacity: 1; /* 保持清晰显示 */
+    }
+
+    .number-input {
+        text-align: center;
+    }
+
+    /* 正确答案样式 */
+    .correct {
+        border-color: #4CAF50 !important;
+        background-color: #e8f5e8 !important;
+    }
+
+    /* 错误答案样式 */
+    .incorrect {
+        border-color: #f44336 !important;
+        background-color: #ffebee !important;
+    }
+
+    .question-container {
+        font-size: 16px;
+        line-height: 1.6;
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #fafafa;
+    }
+
+
+
+    .analysis-section {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ff9800;
+        border-radius: 8px;
+        background-color: #fff8e1;
+    }
+
+    .analysis-title {
+        font-weight: bold;
+        color: #e65100;
+        margin-bottom: 10px;
+        font-size: 16px;
+    }
+
+    .debug-info {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .debug-input {
+        width: 100%;
+        padding: 5px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .debug-output {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 5px;
+        background-color: white;
+        white-space: pre-wrap;
+    }
+
+</style>
+
+{{FrontSide}}
+<div id="back-content"></div>
+<div id="debug" class="debug-info">
+    <input type="text" id="debug-input" class="debug-input" placeholder="输入调试文本，按回车添加">
+    <div id="debug-output" class="debug-output"></div>
+</div>
+<script>
+    let result = Persistence.getItem('SelectInResult');
+    addDebugText(JSON.stringify(Persistence.getItem('SelectInResult')));
+    addDebugText(`{{Answer}}`.trim());
+    // 全局变量
+    let userAnswers = [];
+    let correctAnswers = [];
+    let hasErrors = false;
+
+    // 解析用户答案（从SelectInResult）
+    function parseUserAnswers(selectInResult) {
+        if (!selectInResult || !Array.isArray(selectInResult)) {
+            return [];
+        }
+
+        // 按照index排序，确保顺序正确
+        const sortedResults = selectInResult.sort((a, b) => a.index - b.index);
+
+        return sortedResults.map(result => {
+            if (result.type === 'select') {
+                if (result.SelectValue && result.SelectValue.length > 0) {
+                    // 将索引转换为字母（0=A, 1=B, 2=C...）
+                    return result.SelectValue.map(index => String.fromCharCode(65 + index)).join('');
+                } else {
+                    return '';
+                }
+            } else if (result.type === 'number' || result.type === 'text') {
+                return result.value || '';
+            }
+            return '';
+        });
+    }
+
+    // 解析正确答案（从HTML格式）
+    function parseCorrectAnswers(answerHtml) {
+        if (!answerHtml || !answerHtml.trim()) {
+            return [];
+        }
+
+        // 创建一个临时的DOM元素来解析HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = answerHtml.trim();
+
+        // 获取所有的p标签
+        const pTags = tempDiv.querySelectorAll('p');
+        const answers = [];
+
+        for (let i = 0; i < pTags.length; i++) {
+            const text = pTags[i].textContent.trim();
+            answers.push(text);
+        }
+
+        return answers;
+    }
+
+    // 比较答案
+    function compareAnswers(userAnswer, correctAnswer) {
+        if (!userAnswer && !correctAnswer) return true;
+        if (!userAnswer || !correctAnswer) return false;
+
+        // 对于选择题，比较字母组合
+        if (typeof userAnswer === 'string' && typeof correctAnswer === 'string') {
+            // 去除空格并转换为大写进行比较
+            const normalizedUser = userAnswer.replace(/\s/g, '').toUpperCase();
+            const normalizedCorrect = correctAnswer.replace(/\s/g, '').toUpperCase();
+            return normalizedUser === normalizedCorrect;
+        }
+
+        return String(userAnswer) === String(correctAnswer);
+    }
+
+    // 通过ID获取输入框并设置为只读，同时设置正确/错误样式
+    function setInputBoxesReadOnly() {
+        addDebugText('开始设置输入框为只读状态...');
+
+        let inputIndex = 0;
+        while (true) {
+            const inputElement = document.getElementById(`input-${inputIndex}`);
+            if (!inputElement) {
+                break; // 没有更多输入框了
+            }
+
+            // 获取用户答案和正确答案
+            const userAnswer = userAnswers[inputIndex] || '';
+            const correctAnswer = correctAnswers[inputIndex] || '';
+            const isCorrect = compareAnswers(userAnswer, correctAnswer);
+
+            // 设置为只读状态
+            if (inputElement.tagName === 'INPUT') {
+                // 对于input元素
+                inputElement.readOnly = true;
+                inputElement.disabled = true;
+                inputElement.style.pointerEvents = 'none';
+                inputElement.style.cursor = 'default';
+
+                // 设置用户答案
+                inputElement.value = userAnswer || '';
+            } else if (inputElement.tagName === 'SPAN') {
+                // 对于span元素（选择框）
+                inputElement.style.pointerEvents = 'none';
+                inputElement.style.cursor = 'default';
+                inputElement.onclick = null; // 移除点击事件
+
+                // 设置用户答案
+                inputElement.textContent = userAnswer || '(未作答)';
+            }
+
+            // 设置正确/错误样式
+            inputElement.classList.remove('correct', 'incorrect');
+            if (isCorrect) {
+                inputElement.classList.add('correct');
+            } else {
+                inputElement.classList.add('incorrect');
+                hasErrors = true;
+            }
+
+            addDebugText(`输入框${inputIndex}: ${userAnswer} ${isCorrect ? '✓' : '✗'} (正确答案: ${correctAnswer})`);
+            inputIndex++;
+        }
+
+        addDebugText(`共处理了 ${inputIndex} 个输入框`);
+
+        // 如果有错误，显示解析
+        if (hasErrors) {
+            showAnalysis();
+        }
+    }
+
+    // 显示解析
+    function showAnalysis() {
+        const analyzeContent = `{{Analyze}}`.trim();
+        if (analyzeContent) {
+            const backContent = document.getElementById('back-content');
+            if (backContent) {
+                backContent.innerHTML = `
+                    <div class="analysis-section">
+                        <div class="analysis-title">📖 答案解析</div>
+                        ${analyzeContent}
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // 初始化背面
+    function initializeBack() {
+        try {
+            Persistence.setItem("SelectInResult",result);
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.select-blank') && !e.target.closest('.dropdown-menu')) {
+
+                }
+            });
+            // 重置全局变量
+            hasErrors = false;
+            userAnswers = [];
+            correctAnswers = [];
+
+            // 获取用户答案
+            const savedResults = Persistence.isAvailable() ? Persistence.getItem('SelectInResult') : null;
+            addDebugText('原始持久化数据: ' + JSON.stringify(savedResults));
+
+            if (savedResults) {
+                userAnswers = parseUserAnswers(savedResults);
+                addDebugText('解析后的用户答案: ' + JSON.stringify(userAnswers));
+            }
+
+            // 获取正确答案（HTML格式）
+            const answerHtml = `{{Answer}}`.trim();
+            addDebugText('原始答案HTML: ' + answerHtml);
+
+            correctAnswers = parseCorrectAnswers(answerHtml);
+            addDebugText('解析后的正确答案: ' + JSON.stringify(correctAnswers));
+
+            // 延迟执行，确保前端的输入框已经创建完成
+            setTimeout(setInputBoxesReadOnly, 500);
+
+        } catch (error) {
+            addDebugText('初始化背面时发生错误: ' + error.message);
+            console.error('initializeBack error:', error);
+        }
+    }
+
+    // 更新调试信息
+    function updateDebugInfo(debugMessage) {
+        const debugOutput = document.getElementById('debug-output');
+        const currentTime = new Date().toLocaleTimeString();
+
+        let displayText;
+        if (debugMessage) {
+            // 如果有自定义调试信息，显示自定义信息
+            displayText = `[${currentTime}] ${debugMessage}`;
+        }
+
+        // 添加新的调试信息到输出区域
+        if (debugOutput.textContent.trim() === '') {
+            debugOutput.textContent = displayText;
+        } else {
+            debugOutput.textContent += '\n' + displayText;
+        }
+
+        // 自动滚动到底部
+        debugOutput.scrollTop = debugOutput.scrollHeight;
+    }
+
+    // 添加自定义调试文本
+    function addDebugText(text) {
+        updateDebugInfo(text);
+    }
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeBack);
+    } else {
+        initializeBack();
+    }
+</script>

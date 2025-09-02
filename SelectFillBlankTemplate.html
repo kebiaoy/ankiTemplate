@@ -245,14 +245,12 @@
             return "请选择";
         }
         
-        const field = questionData.inputFields[index];
         // SelectValue数组已经按照选项顺序排序，直接使用
-        const selectedTexts = result.SelectValue.map(i => {
-            const optionLabel = String.fromCharCode(65 + i); // A, B, C, D...
-            return `${optionLabel}. ${field.options[i]}`;
+        const selectedLabels = result.SelectValue.map(i => {
+            return String.fromCharCode(65 + i); // A, B, C, D...
         }).filter(Boolean);
         
-        return selectedTexts.length > 0 ? selectedTexts.join(', ') : "请选择";
+        return selectedLabels.length > 0 ? selectedLabels.join(', ') : "请选择";
     }
     
     // 处理数字输入

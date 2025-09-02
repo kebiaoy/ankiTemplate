@@ -434,21 +434,78 @@
         return processed;
     }
     
+    // 创建帮助手册
+    function createHelpManual() {
+        return `
+            <div style="padding: 20px; border: 2px solid #4A90E2; border-radius: 8px; background-color: #f8f9fa; margin: 20px 0;">
+                <h3 style="color: #4A90E2; margin-top: 0;">📖 选择填空题输入格式帮助</h3>
+                
+                <h4>🔤 基本格式：</h4>
+                <p>在问题文本中使用 <code>&lt;...&gt;</code> 包裹输入框</p>
+                
+                <h4>📝 输入框类型：</h4>
+                <ul>
+                    <li><strong>单选框：</strong><code>&lt;s&amp;b选项1&amp;b选项2&amp;b选项3&amp;b&gt;</code></li>
+                    <li><strong>多选框：</strong><code>&lt;s&amp;a选项1&amp;a选项2&amp;a选项3&amp;a&gt;</code></li>
+                    <li><strong>数字输入：</strong><code>&lt;n&gt;</code> （只能输入数字和小数点）</li>
+                    <li><strong>文本输入：</strong><code>&lt;t&gt;</code> （可输入任何文本）</li>
+                </ul>
+                
+                <h4>💡 示例：</h4>
+                <div style="background-color: #e3f2fd; padding: 10px; border-radius: 4px; font-family: monospace;">
+                    你吃&lt;s&amp;b饭&amp;b鱼&amp;b肉&amp;b&gt;吗?我想吃&lt;s&amp;a狗肉&amp;a猪手&amp;a肌肉&amp;a&gt;很好了.还想吃&lt;n&gt;这个，不想吃&lt;t&gt;那个
+                </div>
+                
+                <h4>📋 格式说明：</h4>
+                <ul>
+                    <li><code>&amp;b</code> 表示单选选项（radio）</li>
+                    <li><code>&amp;a</code> 表示多选选项（checkbox）</li>
+                    <li>选项会自动添加 A、B、C 标签</li>
+                    <li>多选结果按 A、B、C 顺序显示和存储</li>
+                </ul>
+                
+                <h4>🎯 使用方法：</h4>
+                <p>在Anki卡片的 <strong>{{Front}}</strong> 字段中输入上述格式的文本即可</p>
+                
+                <hr style="margin: 15px 0;">
+                <p style="color: #666; font-style: italic; margin-bottom: 0;">
+                    💡 提示：下方显示的是示例效果，您可以尝试操作各种输入框
+                </p>
+            </div>
+        `;
+    }
+
     // 初始化
     function initialize() {
         // 从Anki字段获取数据
         const frontContent = `{{Front}}`.trim();
         
-        // 示例数据（如果Front字段为空）
-        const exampleData = "你吃<s&b饭&b鱼&b肉&b>吗?我想吃<s&a狗肉&a猪手&a肌肉&a>很好了.还想吃<n>这个，不想吃<t>那个";
-        const inputData = frontContent || exampleData;
+        let inputData;
+        let showHelp = false;
+        
+        if (!frontContent) {
+            // 如果Front字段为空，显示帮助手册和示例
+            showHelp = true;
+            inputData = "你吃<s&b饭&b鱼&b肉&b>吗?我想吃<s&a狗肉&a猪手&a肌肉&a>很好了.还想吃<n>这个，不想吃<t>那个";
+        } else {
+            inputData = frontContent;
+        }
         
         // 解析数据
         questionData = parseQuestionData(inputData);
         
+        // 显示帮助手册（如果需要）
+        let displayContent = '';
+        if (showHelp) {
+            displayContent += createHelpManual();
+            displayContent += '<h4>📌 示例效果：</h4>';
+        }
+        
         // 处理问题文本并显示
         const processedQuestion = processQuestion(questionData.question, questionData.inputFields);
-        document.getElementById('question-display').innerHTML = processedQuestion;
+        displayContent += processedQuestion;
+        
+        document.getElementById('question-display').innerHTML = displayContent;
         
         // 初始化SelectInResult
         initializeSelectInResult(questionData.inputFields);

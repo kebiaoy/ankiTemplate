@@ -341,10 +341,7 @@
                         SelectInResult[index].SelectValue = SelectInResult[index].SelectValue.filter(v => v !== optionIndex);
                     }
                 }
-                
-                // 更新显示文本
-                element.textContent = getDisplayText(index);
-                
+
                 // 持久化存储
                 if (Persistence.isAvailable()) {
                     Persistence.setItem('SelectInResult', SelectInResult);
@@ -362,6 +359,19 @@
         currentOpenDropdown = dropdown;
     }
     
+    // 更新所有选择框的显示文本
+    function updateAllSelectDisplays() {
+        document.querySelectorAll('.select-blank').forEach((element, index) => {
+            const dataIndex = parseInt(element.getAttribute('data-index'));
+            if (!isNaN(dataIndex) && dataIndex < SelectInResult.length) {
+                const result = SelectInResult[dataIndex];
+                if (result.type === 'select') {
+                    element.textContent = getDisplayText(dataIndex);
+                }
+            }
+        });
+    }
+
     // 关闭所有下拉菜单
     function closeAllDropdowns() {
         const dropdowns = document.querySelectorAll('.dropdown-menu');
@@ -370,6 +380,10 @@
             dropdown.remove();
         });
         currentOpenDropdown = null;
+        
+        // 菜单关闭后更新所有选择框的显示文本
+        updateAllSelectDisplays();
+        updateDebugInfo('菜单关闭，更新显示文本');
     }
     
     // 更新调试信息

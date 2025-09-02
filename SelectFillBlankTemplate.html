@@ -121,13 +121,12 @@
     }
 </style>
 
-{{Front}}
 
 <div id="question-display" class="question-container"></div>
-<div id="debug" class="debug-info">
-    <input type="text" id="debug-input" class="debug-input" placeholder="输入调试文本，按回车添加">
-    <div id="debug-output" class="debug-output"></div>
-</div>
+<!--<div id="debug" class="debug-info">-->
+<!--    <input type="text" id="debug-input" class="debug-input" placeholder="输入调试文本，按回车添加">-->
+<!--    <div id="debug-output" class="debug-output"></div>-->
+<!--</div>-->
 
 <script>
     // 全局变量
@@ -135,30 +134,49 @@
     let questionData = [];
     let currentOpenDropdown = null;
     
+    // HTML解码函数
+    function decodeHtmlEntities(text) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
+    }
+    
     // 解析输入数据
     function parseQuestionData(input) {
-        let question = input;
+        // 保留原始HTML结构，只解析输入框标记
+        let htmlContent = input;
         const inputFields = [];
         
-        // 匹配所有的输入框 <...>
-        const inputMatches = input.match(/<[^>]+>/g) || [];
+        // 提取所有的转义输入框标记
+        const inputMatches = [];
+        const escapedInputRegex = /&lt;(s&amp;[ab][^&]*(?:&amp;[ab][^&]*)*|n|t)&gt;/g;
+        let match;
+        while ((match = escapedInputRegex.exec(input)) !== null) {
+            // 解码这个特定的输入框标记
+            const decodedMatch = decodeHtmlEntities(match[0]);
+            inputMatches.push({
+                original: match[0],     // 原始转义格式
+                decoded: decodedMatch,  // 解码后格式
+                content: match[1]       // 内容部分
+            });
+        }
         
-        inputMatches.forEach((match, index) => {
-            const content = match.slice(1, -1); // 去掉 < 和 >
+        inputMatches.forEach((matchInfo, index) => {
+            const content = decodeHtmlEntities(matchInfo.content);
             
             if (content.startsWith('s')) {
-                // 选择框 <s&b...> 或 <s&a...>
+                // 选择框 s&b... 或 s&a...
                 const selectContent = content.substring(1); // 去掉 's'
                 const type = selectContent[1]; // 'a' 或 'b'
                 
                 // 提取选项
                 const optionMatches = selectContent.match(/&[ab][^&]+/g) || [];
-                const options = optionMatches.map(opt => opt.substring(2)).filter(opt => opt.trim() !== ''); // 去掉 &a 或 &b 并过滤空选项
+                const options = optionMatches.map(opt => opt.substring(2)).filter(opt => opt.trim() !== '');
                 
                 inputFields.push({
                     index: index,
                     type: 'select',
-                    selectType: type, // 'a' 多选, 'b' 单选
+                    selectType: type,
                     options: options,
                     placeholder: '请选择'
                 });
@@ -178,11 +196,11 @@
                 });
             }
             
-            // 替换问题中的输入框标记
-            question = question.replace(match, `__INPUT_${index}__`);
+            // 在HTML内容中用占位符替换原始的转义标记
+            htmlContent = htmlContent.replace(matchInfo.original, `__INPUT_${index}__`);
         });
         
-        return { question, inputFields };
+        return { htmlContent, inputFields };
     }
     
     // 初始化SelectInResult
@@ -392,37 +410,37 @@
     
     // 更新调试信息
     function updateDebugInfo(debugMessage) {
-        const debugOutput = document.getElementById('debug-output');
-        const currentTime = new Date().toLocaleTimeString();
-        
-        let displayText;
-        if (debugMessage) {
-            // 如果有自定义调试信息，显示自定义信息
-            displayText = `[${currentTime}] ${debugMessage}`;
-        } else {
-            // 如果没有自定义信息，显示SelectInResult
-            displayText = `[${currentTime}] SelectInResult: ${JSON.stringify(SelectInResult, null, 2)}`;
-        }
-        
-        // 添加新的调试信息到输出区域
-        if (debugOutput.textContent.trim() === '') {
-            debugOutput.textContent = displayText;
-        } else {
-            debugOutput.textContent += '\n' + displayText;
-        }
-        
-        // 自动滚动到底部
-        debugOutput.scrollTop = debugOutput.scrollHeight;
+        // const debugOutput = document.getElementById('debug-output');
+        // const currentTime = new Date().toLocaleTimeString();
+        //
+        // let displayText;
+        // if (debugMessage) {
+        //     // 如果有自定义调试信息，显示自定义信息
+        //     displayText = `[${currentTime}] ${debugMessage}`;
+        // } else {
+        //     // 如果没有自定义信息，显示SelectInResult
+        //     displayText = `[${currentTime}] SelectInResult: ${JSON.stringify(SelectInResult, null, 2)}`;
+        // }
+        //
+        // // 添加新的调试信息到输出区域
+        // if (debugOutput.textContent.trim() === '') {
+        //     debugOutput.textContent = displayText;
+        // } else {
+        //     debugOutput.textContent += '\n' + displayText;
+        // }
+        //
+        // // 自动滚动到底部
+        // debugOutput.scrollTop = debugOutput.scrollHeight;
     }
     
     // 添加自定义调试文本
     function addDebugText(text) {
-        updateDebugInfo(text);
+        //updateDebugInfo(text);
     }
     
-    // 处理问题文本
-    function processQuestion(questionText, inputFields) {
-        let processed = questionText;
+    // 处理HTML内容
+    function processHtmlContent(htmlContent, inputFields) {
+        let processed = htmlContent;
         
         // 替换所有的 __INPUT_X__ 标记
         inputFields.forEach((field, index) => {
@@ -441,25 +459,27 @@
                 <h3 style="color: #4A90E2; margin-top: 0;">📖 选择填空题输入格式帮助</h3>
                 
                 <h4>🔤 基本格式：</h4>
-                <p>在问题文本中使用 <code>&lt;...&gt;</code> 包裹输入框</p>
+                <p>在Anki的HTML字段中使用转义字符：<code>&amp;lt;...&amp;gt;</code> 包裹输入框</p>
                 
                 <h4>📝 输入框类型：</h4>
                 <ul>
-                    <li><strong>单选框：</strong><code>&lt;s&amp;b选项1&amp;b选项2&amp;b选项3&amp;b&gt;</code></li>
-                    <li><strong>多选框：</strong><code>&lt;s&amp;a选项1&amp;a选项2&amp;a选项3&amp;a&gt;</code></li>
-                    <li><strong>数字输入：</strong><code>&lt;n&gt;</code> （只能输入数字和小数点）</li>
-                    <li><strong>文本输入：</strong><code>&lt;t&gt;</code> （可输入任何文本）</li>
+                    <li><strong>单选框：</strong><code>&amp;lt;s&amp;amp;b选项1&amp;amp;b选项2&amp;amp;b选项3&amp;amp;b&amp;gt;</code></li>
+                    <li><strong>多选框：</strong><code>&amp;lt;s&amp;amp;a选项1&amp;amp;a选项2&amp;amp;a选项3&amp;amp;a&amp;gt;</code></li>
+                    <li><strong>数字输入：</strong><code>&amp;lt;n&amp;gt;</code> （只能输入数字和小数点）</li>
+                    <li><strong>文本输入：</strong><code>&amp;lt;t&amp;gt;</code> （可输入任何文本）</li>
                 </ul>
                 
-                <h4>💡 示例：</h4>
-                <div style="background-color: #e3f2fd; padding: 10px; border-radius: 4px; font-family: monospace;">
-                    你吃&lt;s&amp;b饭&amp;b鱼&amp;b肉&amp;b&gt;吗?我想吃&lt;s&amp;a狗肉&amp;a猪手&amp;a肌肉&amp;a&gt;很好了.还想吃&lt;n&gt;这个，不想吃&lt;t&gt;那个
+                <h4>💡 示例（Anki字段中的格式）：</h4>
+                <div style="background-color: #e3f2fd; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all;">
+                    &amp;lt;p&amp;gt;你吃&amp;lt;s&amp;amp;b饭&amp;amp;b鱼&amp;amp;b肉&amp;amp;b&amp;gt;吗?我想吃&amp;lt;s&amp;amp;a狗肉&amp;amp;a猪手&amp;amp;a肌肉&amp;amp;a&amp;gt;很好了.还想吃&amp;lt;n&amp;gt;这个，不想吃&amp;lt;t&amp;gt;那个&amp;lt;/p&amp;gt;
                 </div>
                 
                 <h4>📋 格式说明：</h4>
                 <ul>
-                    <li><code>&amp;b</code> 表示单选选项（radio）</li>
-                    <li><code>&amp;a</code> 表示多选选项（checkbox）</li>
+                    <li><code>&amp;amp;b</code> 表示单选选项（radio）</li>
+                    <li><code>&amp;amp;a</code> 表示多选选项（checkbox）</li>
+                    <li><code>&amp;lt;</code> 和 <code>&amp;gt;</code> 是HTML转义的 &lt; 和 &gt;</li>
+                    <li><code>&amp;amp;</code> 是HTML转义的 &amp;</li>
                     <li>选项会自动添加 A、B、C 标签</li>
                     <li>多选结果按 A、B、C 顺序显示和存储</li>
                 </ul>
@@ -486,7 +506,7 @@
         if (!frontContent) {
             // 如果Front字段为空，显示帮助手册和示例
             showHelp = true;
-            inputData = "你吃<s&b饭&b鱼&b肉&b>吗?我想吃<s&a狗肉&a猪手&a肌肉&a>很好了.还想吃<n>这个，不想吃<t>那个";
+            inputData = '<p>你吃&lt;s&amp;b饭&amp;b鱼&amp;b肉&amp;b&gt;吗?我想吃&lt;s&amp;a狗肉&amp;a猪手&amp;a肌肉&amp;a&gt;很好了.还想吃&lt;n&gt;这个，不想吃&lt;t&gt;那个</p><figure class="image"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjEwMCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+示例图片</text></svg>" alt="示例图片"></figure>';
         } else {
             inputData = frontContent;
         }
@@ -501,9 +521,9 @@
             displayContent += '<h4>📌 示例效果：</h4>';
         }
         
-        // 处理问题文本并显示
-        const processedQuestion = processQuestion(questionData.question, questionData.inputFields);
-        displayContent += processedQuestion;
+        // 处理HTML内容并显示
+        const processedHtml = processHtmlContent(questionData.htmlContent, questionData.inputFields);
+        displayContent += processedHtml;
         
         document.getElementById('question-display').innerHTML = displayContent;
         
@@ -550,19 +570,19 @@
         }
     });
     
-    // 处理调试输入框的回车事件
-    document.addEventListener('DOMContentLoaded', () => {
-        const debugInput = document.getElementById('debug-input');
-        debugInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const text = debugInput.value.trim();
-                if (text) {
-                    addDebugText(text);
-                    debugInput.value = ''; // 清空输入框
-                }
-            }
-        });
-    });
+    // // 处理调试输入框的回车事件
+    // document.addEventListener('DOMContentLoaded', () => {
+    //     const debugInput = document.getElementById('debug-input');
+    //     debugInput.addEventListener('keypress', (e) => {
+    //         if (e.key === 'Enter') {
+    //             const text = debugInput.value.trim();
+    //             if (text) {
+    //                 addDebugText(text);
+    //                 debugInput.value = ''; // 清空输入框
+    //             }
+    //         }
+    //     });
+    // });
     
     // 页面加载完成后初始化
     if (document.readyState === 'loading') {

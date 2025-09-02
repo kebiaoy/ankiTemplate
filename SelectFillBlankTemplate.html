@@ -246,7 +246,9 @@
         }
         
         const field = questionData.inputFields[index];
-        const selectedTexts = result.SelectValue.map(i => {
+        // 对选中的索引按照A、B、C顺序排序
+        const sortedIndices = [...result.SelectValue].sort((a, b) => a - b);
+        const selectedTexts = sortedIndices.map(i => {
             const optionLabel = String.fromCharCode(65 + i); // A, B, C, D...
             return `${optionLabel}. ${field.options[i]}`;
         }).filter(Boolean);
@@ -341,11 +343,6 @@
                         SelectInResult[index].SelectValue = SelectInResult[index].SelectValue.filter(v => v !== optionIndex);
                     }
                 }
-
-                // 持久化存储
-                if (Persistence.isAvailable()) {
-                    Persistence.setItem('SelectInResult', SelectInResult);
-                }
                 
                 const selectedOption = options[optionIndex];
                 const selectionType = isMultiple ? '多选' : '单选';
@@ -383,7 +380,14 @@
         
         // 菜单关闭后更新所有选择框的显示文本
         updateAllSelectDisplays();
-        updateDebugInfo('菜单关闭，更新显示文本');
+        
+        // 菜单关闭后进行持久化存储
+        if (Persistence.isAvailable()) {
+            Persistence.setItem('SelectInResult', SelectInResult);
+            updateDebugInfo('菜单关闭，更新显示文本并保存状态');
+        } else {
+            updateDebugInfo('菜单关闭，更新显示文本（持久化存储不可用）');
+        }
     }
     
     // 更新调试信息

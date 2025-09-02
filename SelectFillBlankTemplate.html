@@ -152,8 +152,8 @@
                 const type = selectContent[1]; // 'a' 或 'b'
                 
                 // 提取选项
-                const optionMatches = selectContent.match(/&[ab][^&]*/g) || [];
-                const options = optionMatches.map(opt => opt.substring(2)); // 去掉 &a 或 &b
+                const optionMatches = selectContent.match(/&[ab][^&]+/g) || [];
+                const options = optionMatches.map(opt => opt.substring(2)).filter(opt => opt.trim() !== ''); // 去掉 &a 或 &b 并过滤空选项
                 
                 inputFields.push({
                     index: index,
@@ -246,7 +246,10 @@
         }
         
         const field = questionData.inputFields[index];
-        const selectedTexts = result.SelectValue.map(i => field.options[i]).filter(Boolean);
+        const selectedTexts = result.SelectValue.map(i => {
+            const optionLabel = String.fromCharCode(65 + i); // A, B, C, D...
+            return `${optionLabel}. ${field.options[i]}`;
+        }).filter(Boolean);
         
         return selectedTexts.length > 0 ? selectedTexts.join(', ') : "请选择";
     }
@@ -311,9 +314,10 @@
             const inputName = isMultiple ? `select_${index}` : `select_${index}`;
             const isChecked = SelectInResult[index] && SelectInResult[index].SelectValue.includes(optionIndex);
             
+            const optionLabel = String.fromCharCode(65 + optionIndex); // A, B, C, D...
             item.innerHTML = `
                 <input type="${inputType}" name="${inputName}" value="${optionIndex}" ${isChecked ? 'checked' : ''}>
-                <span>${option}</span>
+                <span>${optionLabel}. ${option}</span>
             `;
             
             item.addEventListener('click', (e) => {

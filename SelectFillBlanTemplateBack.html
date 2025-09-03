@@ -79,6 +79,59 @@
         font-size: 16px;
     }
 
+    .answer-comparison {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #2196F3;
+        border-radius: 8px;
+        background-color: #e3f2fd;
+    }
+
+    .comparison-title {
+        font-weight: bold;
+        color: #1976D2;
+        margin-bottom: 15px;
+        font-size: 16px;
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+        text-align: left;
+    }
+
+    .comparison-table th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+    }
+
+    .comparison-table .correct-answer {
+        color: #4CAF50;
+        font-weight: bold;
+    }
+
+    .comparison-table .wrong-answer {
+        color: #f44336;
+        font-weight: bold;
+    }
+
+    .comparison-table .status-correct {
+        color: #4CAF50;
+        font-weight: bold;
+    }
+
+    .comparison-table .status-wrong {
+        color: #f44336;
+        font-weight: bold;
+    }
+
     .debug-info {
         margin-top: 20px;
         padding: 10px;
@@ -111,10 +164,10 @@
 
 {{FrontSide}}
 <div id="back-content"></div>
-<div id="debug" class="debug-info">
-    <input type="text" id="debug-input" class="debug-input" placeholder="输入调试文本，按回车添加">
-    <div id="debug-output" class="debug-output"></div>
-</div>
+<!--<div id="debug" class="debug-info">-->
+<!--    <input type="text" id="debug-input" class="debug-input" placeholder="输入调试文本，按回车添加">-->
+<!--    <div id="debug-output" class="debug-output"></div>-->
+<!--</div>-->
 <script>
     let result = Persistence.getItem('SelectInResult');
     addDebugText(JSON.stringify(Persistence.getItem('SelectInResult')));
@@ -243,20 +296,93 @@
         }
     }
 
+    // 创建答案比对表格
+    function createAnswerComparison() {
+        let comparisonHtml = `
+            <div class="answer-comparison">
+                <div class="comparison-title">📊 答案比对</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>题目</th>
+                            <th>您的答案</th>
+                            <th>正确答案</th>
+                            <th>结果</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        for (let i = 0; i < Math.max(userAnswers.length, correctAnswers.length); i++) {
+            const userAnswer = userAnswers[i] || '';
+            const correctAnswer = correctAnswers[i] || '';
+            const isCorrect = compareAnswers(userAnswer, correctAnswer);
+            
+            // 获取题目类型描述
+            let questionType = `第${i + 1}题`;
+            if (i < userAnswers.length) {
+                const inputElement = document.getElementById(`input-${i}`);
+                if (inputElement) {
+                    const dataType = inputElement.getAttribute('data-type');
+                    if (dataType === 'b') {
+                        questionType += ' (单选)';
+                    } else if (dataType === 'a') {
+                        questionType += ' (多选)';
+                    } else if (dataType === 'number') {
+                        questionType += ' (数字)';
+                    } else if (dataType === 'text') {
+                        questionType += ' (文本)';
+                    }
+                }
+            }
+
+            const userAnswerClass = isCorrect ? 'correct-answer' : 'wrong-answer';
+            const statusClass = isCorrect ? 'status-correct' : 'status-wrong';
+            const statusText = isCorrect ? '✓ 正确' : '✗ 错误';
+
+            comparisonHtml += `
+                <tr>
+                    <td>${questionType}</td>
+                    <td class="${userAnswerClass}">${userAnswer || '(未作答)'}</td>
+                    <td class="correct-answer">${correctAnswer}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                </tr>
+            `;
+        }
+
+        comparisonHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        return comparisonHtml;
+    }
+
     // 显示解析
     function showAnalysis() {
+        const backContent = document.getElementById('back-content');
+        if (!backContent) return;
+
+        let contentHtml = '';
+
+        // 如果有错误，显示答案比对
+        if (hasErrors) {
+            contentHtml += createAnswerComparison();
+        }
+
+        // 显示解析内容
         const analyzeContent = `{{Analyze}}`.trim();
         if (analyzeContent) {
-            const backContent = document.getElementById('back-content');
-            if (backContent) {
-                backContent.innerHTML = `
-                    <div class="analysis-section">
-                        <div class="analysis-title">📖 答案解析</div>
-                        ${analyzeContent}
-                    </div>
-                `;
-            }
+            contentHtml += `
+                <div class="analysis-section">
+                    <div class="analysis-title">📖 答案解析</div>
+                    ${analyzeContent}
+                </div>
+            `;
         }
+
+        backContent.innerHTML = contentHtml;
     }
 
     // 初始化背面
@@ -300,24 +426,24 @@
 
     // 更新调试信息
     function updateDebugInfo(debugMessage) {
-        const debugOutput = document.getElementById('debug-output');
-        const currentTime = new Date().toLocaleTimeString();
-
-        let displayText;
-        if (debugMessage) {
-            // 如果有自定义调试信息，显示自定义信息
-            displayText = `[${currentTime}] ${debugMessage}`;
-        }
-
-        // 添加新的调试信息到输出区域
-        if (debugOutput.textContent.trim() === '') {
-            debugOutput.textContent = displayText;
-        } else {
-            debugOutput.textContent += '\n' + displayText;
-        }
-
-        // 自动滚动到底部
-        debugOutput.scrollTop = debugOutput.scrollHeight;
+        // const debugOutput = document.getElementById('debug-output');
+        // const currentTime = new Date().toLocaleTimeString();
+        //
+        // let displayText;
+        // if (debugMessage) {
+        //     // 如果有自定义调试信息，显示自定义信息
+        //     displayText = `[${currentTime}] ${debugMessage}`;
+        // }
+        //
+        // // 添加新的调试信息到输出区域
+        // if (debugOutput.textContent.trim() === '') {
+        //     debugOutput.textContent = displayText;
+        // } else {
+        //     debugOutput.textContent += '\n' + displayText;
+        // }
+        //
+        // // 自动滚动到底部
+        // debugOutput.scrollTop = debugOutput.scrollHeight;
     }
 
     // 添加自定义调试文本

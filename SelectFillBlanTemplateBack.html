@@ -144,6 +144,23 @@
         font-weight: bold;
     }
 
+    .success-message {
+        margin-top: 20px;
+        padding: 15px;
+        border: 2px solid #4CAF50;
+        border-radius: 8px;
+        background-color: #e8f5e8;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        color: #2e7d32;
+    }
+
+    .success-icon {
+        font-size: 24px;
+        margin-right: 8px;
+    }
+
     .debug-info {
         margin-top: 20px;
         padding: 10px;
@@ -300,12 +317,10 @@
             inputIndex++;
         }
 
-        addDebugText(`共处理了 ${inputIndex} 个输入框`);
-
-        // 如果有错误，显示解析
-        if (hasErrors) {
-            showAnalysis();
-        }
+                addDebugText(`共处理了 ${inputIndex} 个输入框`);
+        
+        // 显示解析或成功信息
+        showAnalysis();
     }
 
     // 创建答案比对表格
@@ -381,15 +396,24 @@
         // 如果有错误，显示答案比对
         if (hasErrors) {
             contentHtml += createAnswerComparison();
-        }
-
-        // 显示解析内容
-        const analyzeContent = `{{Analyze}}`.trim();
-        if (analyzeContent) {
+            
+            // 显示解析内容
+            const analyzeContent = `{{Analyze}}`.trim();
+            if (analyzeContent) {
+                contentHtml += `
+                    <div class="analysis-section">
+                        <div class="analysis-title">📖 答案解析</div>
+                        ${analyzeContent}
+                    </div>
+                `;
+            }
+        } else {
+            // 所有答案都正确，显示成功信息
             contentHtml += `
-                <div class="analysis-section">
-                    <div class="analysis-title">📖 答案解析</div>
-                    ${analyzeContent}
+                <div class="success-message">
+                    <span class="success-icon">🎉</span>
+                    回答正确！恭喜你全部答对了！
+                    <span class="success-icon">✨</span>
                 </div>
             `;
         }

@@ -6,34 +6,46 @@
 <style>
     .select-blank {
         display: inline-block;
-        min-width: 80px;
-        padding: 4px 8px;
+        min-width: 50px;
+        max-width: 120px;
+        padding: 2px 6px;
         border: 2px solid #4A90E2;
         border-radius: 4px;
         background-color: #f8f9fa;
         cursor: default;
         text-align: center;
         position: relative;
-        min-height: 20px;
-        margin: 0 2px;
+        height: 24px;
+        line-height: 20px;
+        margin: 0 1px;
+        font-size: 14px;
+        vertical-align: middle;
     }
 
     .input-blank {
         display: inline-block;
-        min-width: 80px;
-        padding: 4px 8px;
-        border: 2px solid #4A90E2;
-        border-radius: 4px;
-        background-color: white;
+        min-width: 60px;
+        max-width: 150px;
+        width: auto;
+        padding: 2px 6px;
+        border: none;
+        border-bottom: 2px solid #4A90E2;
+        border-radius: 0;
+        background-color: transparent;
         font-size: 14px;
-        margin: 0 2px;
+        height: 24px;
+        line-height: 20px;
+        margin: 0 1px;
+        vertical-align: middle;
+        box-sizing: border-box;
         cursor: default;
     }
 
     .input-blank:disabled {
-        background-color: #f8f9fa;
+        background-color: transparent;
         cursor: default;
         opacity: 1; /* 保持清晰显示 */
+        color: #333; /* 确保文字清晰可见 */
     }
 
     .number-input {
@@ -42,13 +54,13 @@
 
     /* 正确答案样式 */
     .correct {
-        border-color: #4CAF50 !important;
+        border-bottom-color: #4CAF50 !important;
         background-color: #e8f5e8 !important;
     }
 
     /* 错误答案样式 */
     .incorrect {
-        border-color: #f44336 !important;
+        border-bottom-color: #f44336 !important;
         background-color: #ffebee !important;
     }
 

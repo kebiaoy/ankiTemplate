@@ -6,16 +6,20 @@
 <style>
     .select-blank {
         display: inline-block;
-        min-width: 80px;
-        padding: 4px 8px;
+        min-width: 50px;
+        max-width: 120px;
+        padding: 2px 6px;
         border: 2px solid #4A90E2;
         border-radius: 4px;
         background-color: #f8f9fa;
         cursor: pointer;
         text-align: center;
         position: relative;
-        min-height: 20px;
-        margin: 0 2px;
+        height: 24px;
+        line-height: 20px;
+        margin: 0 1px;
+        font-size: 14px;
+        vertical-align: middle;
     }
     
     .select-blank:hover {
@@ -35,9 +39,12 @@
         border-radius: 4px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         z-index: 1000;
-        min-width: 120px;
+        min-width: max-content;
+        max-width: 300px;
+        width: auto;
         display: none;
         padding: 5px 0;
+        white-space: nowrap;
     }
     
     .dropdown-item {
@@ -46,6 +53,9 @@
         border-bottom: 1px solid #eee;
         display: flex;
         align-items: center;
+        white-space: normal;
+        word-wrap: break-word;
+        min-width: fit-content;
     }
     
     .dropdown-item:hover {
@@ -101,19 +111,26 @@
     
     .input-blank {
         display: inline-block;
-        min-width: 80px;
-        padding: 4px 8px;
-        border: 2px solid #4A90E2;
-        border-radius: 4px;
-        background-color: white;
+        min-width: 60px;
+        max-width: 150px;
+        width: auto;
+        padding: 2px 6px;
+        border: none;
+        border-bottom: 2px solid #4A90E2;
+        border-radius: 0;
+        background-color: transparent;
         font-size: 14px;
-        margin: 0 2px;
+        height: 24px;
+        line-height: 20px;
+        margin: 0 1px;
+        vertical-align: middle;
+        box-sizing: border-box;
     }
     
     .input-blank:focus {
         outline: none;
-        border-color: #2196F3;
-        box-shadow: 0 0 3px rgba(33, 150, 243, 0.3);
+        border-bottom-color: #2196F3;
+        box-shadow: 0 2px 3px rgba(33, 150, 243, 0.3);
     }
     
     .number-input {
@@ -371,7 +388,52 @@
         });
         
         element.appendChild(dropdown);
+        
+        // 动态调整下拉菜单宽度
+        adjustDropdownWidth(dropdown, element);
+        
         currentOpenDropdown = dropdown;
+    }
+    
+    // 动态调整下拉菜单宽度
+    function adjustDropdownWidth(dropdown, triggerElement) {
+        // 临时显示下拉菜单以测量内容宽度
+        dropdown.style.visibility = 'hidden';
+        dropdown.style.display = 'block';
+        dropdown.style.width = 'auto';
+        dropdown.style.minWidth = 'max-content';
+        
+        // 获取所有菜单项的最大宽度
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        let maxWidth = 0;
+        
+        items.forEach(item => {
+            const itemWidth = item.scrollWidth;
+            maxWidth = Math.max(maxWidth, itemWidth);
+        });
+        
+        // 确保下拉菜单不会比触发元素小太多，但也不会过宽
+        const triggerWidth = triggerElement.offsetWidth;
+        const minMenuWidth = Math.max(triggerWidth, 80); // 最小宽度为触发元素宽度或80px
+        const maxMenuWidth = Math.min(maxWidth + 20, 300); // 最大宽度限制为300px，加20px的缓冲
+        
+        const finalWidth = Math.max(minMenuWidth, Math.min(maxMenuWidth, maxWidth + 20));
+        
+        // 应用计算出的宽度
+        dropdown.style.width = finalWidth + 'px';
+        dropdown.style.minWidth = finalWidth + 'px';
+        
+        // 检查是否超出视口右边界，如果是则调整位置
+        const rect = dropdown.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        
+        if (rect.right > viewportWidth) {
+            const overflowAmount = rect.right - viewportWidth + 10; // 10px缓冲
+            dropdown.style.left = `-${overflowAmount}px`;
+        }
+        
+        // 恢复显示
+        dropdown.style.visibility = 'visible';
     }
     
     // 更新所有选择框的显示文本

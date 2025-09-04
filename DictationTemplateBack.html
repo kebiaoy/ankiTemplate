@@ -83,9 +83,11 @@
     }
 
     .pronunciation-text {
-        font-family: 'Courier New', monospace;
+        font-family: 'Doulos SIL', 'Charis SIL', 'DejaVu Sans', 'Lucida Grande', 'Segoe UI', Arial, sans-serif;
         font-size: 16px;
         color: #555;
+        font-weight: normal;
+        letter-spacing: 0.5px;
     }
 
     .definition-section {
@@ -127,37 +129,6 @@
         font-size: 18px;
     }
 
-    .examples-section {
-        margin: 30px 0;
-        padding: 25px;
-        background: #fffaf0;
-        border-radius: 15px;
-        border-left: 5px solid #FF9800;
-    }
-
-    .example-item {
-        margin: 15px 0;
-        padding: 15px;
-        background: white;
-        border-radius: 10px;
-        border: 1px solid #ffe0b3;
-        position: relative;
-    }
-
-    .example-text {
-        font-size: 16px;
-        line-height: 1.6;
-        color: #333;
-        font-style: italic;
-        margin-bottom: 8px;
-    }
-
-    .example-translation {
-        font-size: 14px;
-        color: #666;
-        border-top: 1px solid #f0f0f0;
-        padding-top: 8px;
-    }
 
     .audio-replay-section {
         text-align: center;
@@ -326,10 +297,10 @@
         
         <div class="pronunciation-section">
             <div class="pronunciation-item" onclick="playPronunciation('uk')">
-                🇬🇧 <span class="pronunciation-text">[英式]</span>
+                🇬🇧 <span class="pronunciation-text" id="uk-phonetic">[英式音标]</span>
             </div>
             <div class="pronunciation-item" onclick="playPronunciation('us')">
-                🇺🇸 <span class="pronunciation-text">[美式]</span>
+                🇺🇸 <span class="pronunciation-text" id="us-phonetic">[美式音标]</span>
             </div>
         </div>
     </div>
@@ -362,15 +333,6 @@
         </div>
     </div>
 
-    <!-- 例句区域 -->
-    <div class="examples-section" id="examples-section">
-        <div class="section-title">
-            💡 例句展示
-        </div>
-        <div id="examples-content">
-            {{Examples}}
-        </div>
-    </div>
 
     <!-- 隐藏的音频元素 -->
     <audio id="uk-audio" class="hidden-audio" preload="auto"></audio>
@@ -381,7 +343,6 @@
     // 获取单词和其他字段内容
     const frontWord = `{{Front}}`.trim();
     const definitionContent = `{{Definition}}`.trim();
-    const examplesContent = `{{Examples}}`.trim();
     
     // 初始化音频
     function initializeAudio() {
@@ -457,44 +418,6 @@
         }
     }
     
-    // 处理Examples字段内容
-    function processExamplesContent() {
-        const examplesContentElement = document.getElementById('examples-content');
-        const examplesSection = document.getElementById('examples-section');
-        
-        if (!examplesContent) {
-            examplesSection.style.display = 'none';
-            return;
-        }
-        
-        // 如果Examples字段包含HTML，直接显示
-        if (examplesContent.includes('<')) {
-            examplesContentElement.innerHTML = examplesContent;
-        } else {
-            // 将每行文本转换为例句项
-            const lines = examplesContent.split('\n').filter(line => line.trim());
-            const formattedContent = lines.map(line => {
-                const trimmedLine = line.trim();
-                // 如果行中包含 | 符号，假设是例句|翻译的格式
-                if (trimmedLine.includes('|')) {
-                    const [example, translation] = trimmedLine.split('|').map(part => part.trim());
-                    return `
-                        <div class="example-item">
-                            <div class="example-text">${example}</div>
-                            <div class="example-translation">${translation}</div>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="example-item">
-                            <div class="example-text">${trimmedLine}</div>
-                        </div>
-                    `;
-                }
-            }).join('');
-            examplesContentElement.innerHTML = formattedContent;
-        }
-    }
     
     // 获取用户输入并进行对比
     function getUserInputFromFront() {
@@ -538,11 +461,435 @@
         return normalize(userAnswer) === normalize(correctAnswer);
     }
     
+    // 处理音标内容
+    function processPhoneticContent() {
+        // 直接从在线API获取音标
+        fetchPhoneticFromAPI(frontWord);
+    }
+    
+    
+    // 从在线API获取音标
+    async function fetchPhoneticFromAPI(word) {
+        const ukPhoneticElement = document.getElementById('uk-phonetic');
+        const usPhoneticElement = document.getElementById('us-phonetic');
+        
+        // 显示加载状态
+        ukPhoneticElement.textContent = '[加载中...]';
+        usPhoneticElement.textContent = '[加载中...]';
+        
+        // 尝试多个API源
+        const apiSources = [
+            {
+                name: 'Free Dictionary API',
+                url: `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+                parser: parseFreeDictionaryAPI
+            },
+            {
+                name: 'Cambridge Dictionary API (备用)',
+                url: `https://dictionary.cambridge.org/search/english/direct/?q=${encodeURIComponent(word)}`,
+                parser: parseCambridgeAPI,
+                isHtml: true
+            },
+            {
+                name: 'Oxford Learner Dictionary (备用)',
+                url: `https://www.oxfordlearnersdictionaries.com/search/english/direct/?q=${encodeURIComponent(word)}`,
+                parser: parseOxfordAPI,
+                isHtml: true
+            },
+            {
+                name: 'Wordnik API (备用)',
+                url: `https://api.wordnik.com/v4/word.json/${encodeURIComponent(word)}/pronunciations?useCanonical=false&limit=50&api_key=demo`,
+                parser: parseWordnikAPI
+            }
+        ];
+        
+        for (const source of apiSources) {
+            try {
+                console.log(`尝试从 ${source.name} 获取音标...`);
+                const response = await fetch(source.url);
+                
+                if (response.ok) {
+                    let data;
+                    if (source.isHtml) {
+                        data = await response.text();
+                    } else {
+                        data = await response.json();
+                    }
+                    
+                    const phonetics = source.parser(data);
+                    
+                    if (phonetics.uk || phonetics.us) {
+                        const ukPhonetic = simplifyPhonetic(phonetics.uk || phonetics.us || '[英式音标]');
+                        const usPhonetic = simplifyPhonetic(phonetics.us || phonetics.uk || '[美式音标]');
+                        ukPhoneticElement.textContent = ukPhonetic;
+                        usPhoneticElement.textContent = usPhonetic;
+                        console.log(`从 ${source.name} 成功获取音标`);
+                        return; // 成功获取，退出循环
+                    }
+                }
+            } catch (error) {
+                console.warn(`从 ${source.name} 获取音标失败:`, error);
+            }
+        }
+        
+        // 所有API都失败，尝试其他方法
+        await tryAlternativePhoneticSources(word);
+    }
+    
+    // 解析Free Dictionary API响应
+    function parseFreeDictionaryAPI(data) {
+        const result = { uk: '', us: '' };
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+            const entry = data[0];
+            const phonetics = entry.phonetics || [];
+            
+            // 查找英式音标
+            const ukPhoneticObj = phonetics.find(p => 
+                p.text && (
+                    p.audio?.includes('-uk') || 
+                    p.audio?.includes('_gb') || 
+                    p.audio?.includes('uk.mp3')
+                )
+            );
+            if (ukPhoneticObj) {
+                result.uk = ukPhoneticObj.text;
+            }
+            
+            // 查找美式音标
+            const usPhoneticObj = phonetics.find(p => 
+                p.text && (
+                    p.audio?.includes('-us') || 
+                    p.audio?.includes('_us') || 
+                    p.audio?.includes('us.mp3')
+                )
+            );
+            if (usPhoneticObj) {
+                result.us = usPhoneticObj.text;
+            }
+            
+            // 如果没有找到特定的音标，使用第一个可用的
+            if (!result.uk && !result.us && phonetics.length > 0) {
+                const firstPhonetic = phonetics.find(p => p.text);
+                if (firstPhonetic) {
+                    result.uk = result.us = firstPhonetic.text;
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    // 解析Merriam-Webster API响应
+    function parseMerriamWebsterAPI(data) {
+        const result = { uk: '', us: '' };
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+            const entry = data[0];
+            if (entry.hwi && entry.hwi.prs && entry.hwi.prs.length > 0) {
+                const pronunciations = entry.hwi.prs;
+                
+                // 查找音标
+                for (const pron of pronunciations) {
+                    if (pron.mw) {
+                        // Merriam-Webster格式转换为IPA
+                        const ipaPhonetic = convertMWToIPA(pron.mw);
+                        if (!result.us) {
+                            result.us = ipaPhonetic;
+                        }
+                        if (!result.uk) {
+                            result.uk = ipaPhonetic;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    // 转换Merriam-Webster音标格式为IPA
+    function convertMWToIPA(mwPhonetic) {
+        // 简单的转换映射，可以根据需要扩展
+        const conversionMap = {
+            'ˈ': 'ˈ',
+            'ˌ': 'ˌ',
+            'ə': 'ə',
+            'ɪ': 'ɪ',
+            'i': 'iː',
+            'ʊ': 'ʊ',
+            'u': 'uː',
+            'e': 'e',
+            'ɛ': 'ɛ',
+            'æ': 'æ',
+            'ɑ': 'ɑː',
+            'ɔ': 'ɔː',
+            'o': 'oʊ'
+        };
+        
+        let result = mwPhonetic;
+        for (const [mw, ipa] of Object.entries(conversionMap)) {
+            result = result.replace(new RegExp(mw, 'g'), ipa);
+        }
+        
+        return `/${result}/`;
+    }
+    
+    // 解析Cambridge Dictionary响应
+    function parseCambridgeAPI(htmlText) {
+        const result = { uk: '', us: '' };
+        
+        try {
+            // 创建一个临时DOM来解析HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            
+            // 查找音标元素
+            const phoneticElements = doc.querySelectorAll('.ipa, .pron-info .ipa, .us .ipa, .uk .ipa');
+            
+            for (const element of phoneticElements) {
+                const phoneticText = element.textContent.trim();
+                const parentElement = element.closest('.us, .uk, .pron-info');
+                
+                if (parentElement) {
+                    if (parentElement.classList.contains('uk') || parentElement.textContent.includes('UK')) {
+                        result.uk = phoneticText;
+                    } else if (parentElement.classList.contains('us') || parentElement.textContent.includes('US')) {
+                        result.us = phoneticText;
+                    }
+                } else {
+                    // 如果没有特定标识，作为通用音标
+                    if (!result.uk) result.uk = phoneticText;
+                    if (!result.us) result.us = phoneticText;
+                }
+            }
+        } catch (error) {
+            console.error('解析Cambridge Dictionary响应失败:', error);
+        }
+        
+        return result;
+    }
+    
+    // 解析Oxford Learner Dictionary响应
+    function parseOxfordAPI(htmlText) {
+        const result = { uk: '', us: '' };
+        
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            
+            // 查找音标元素
+            const phoneticElements = doc.querySelectorAll('.phon, .pron-g .phon');
+            
+            for (const element of phoneticElements) {
+                const phoneticText = element.textContent.trim();
+                const geoElement = element.closest('[data-geo]') || element.querySelector('[data-geo]');
+                
+                if (geoElement) {
+                    const geo = geoElement.getAttribute('data-geo');
+                    if (geo === 'br' || geo === 'uk') {
+                        result.uk = phoneticText;
+                    } else if (geo === 'am' || geo === 'us') {
+                        result.us = phoneticText;
+                    }
+                } else {
+                    // 如果没有地理标识，作为通用音标
+                    if (!result.uk) result.uk = phoneticText;
+                    if (!result.us) result.us = phoneticText;
+                }
+            }
+        } catch (error) {
+            console.error('解析Oxford Dictionary响应失败:', error);
+        }
+        
+        return result;
+    }
+    
+    // 解析Wordnik API响应
+    function parseWordnikAPI(data) {
+        const result = { uk: '', us: '' };
+        
+        try {
+            if (data && Array.isArray(data)) {
+                for (const pronunciation of data) {
+                    if (pronunciation.rawType) {
+                        const phoneticText = pronunciation.rawType;
+                        // Wordnik通常不区分英式和美式，使用通用音标
+                        if (!result.uk) result.uk = phoneticText;
+                        if (!result.us) result.us = phoneticText;
+                        break;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('解析Wordnik API响应失败:', error);
+        }
+        
+        return result;
+    }
+    
+    // 尝试其他音标来源
+    async function tryAlternativePhoneticSources(word) {
+        const ukPhoneticElement = document.getElementById('uk-phonetic');
+        const usPhoneticElement = document.getElementById('us-phonetic');
+        
+        // 方法1: 尝试使用Wiktionary API
+        try {
+            console.log('尝试从Wiktionary获取音标...');
+            const wiktionaryUrl = `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word)}`;
+            const response = await fetch(wiktionaryUrl);
+            
+            if (response.ok) {
+                const data = await response.json();
+                const phonetics = parseWiktionaryResponse(data);
+                
+                if (phonetics.uk || phonetics.us) {
+                    ukPhoneticElement.textContent = phonetics.uk || phonetics.us || '[英式音标]';
+                    usPhoneticElement.textContent = phonetics.us || phonetics.uk || '[美式音标]';
+                    console.log('从Wiktionary成功获取音标');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.warn('从Wiktionary获取音标失败:', error);
+        }
+        
+        // 方法2: 尝试使用WordsAPI
+        try {
+            console.log('尝试从WordsAPI获取音标...');
+            const wordsApiUrl = `https://wordsapiv1.p.rapidapi.com/words/${encodeURIComponent(word)}/pronunciation`;
+            const response = await fetch(wordsApiUrl, {
+                headers: {
+                    'X-RapidAPI-Key': 'YOUR_RAPIDAPI_KEY', // 需要替换为实际的API密钥
+                    'X-RapidAPI-Host': 'wordsapiv1.p.rapidapi.com'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.pronunciation) {
+                    const phonetic = data.pronunciation.all || data.pronunciation;
+                    ukPhoneticElement.textContent = phonetic;
+                    usPhoneticElement.textContent = phonetic;
+                    console.log('从WordsAPI成功获取音标');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.warn('从WordsAPI获取音标失败:', error);
+        }
+        
+        // 所有方法都失败
+        console.log('所有音标获取方法都失败，使用默认显示');
+        setDefaultPhonetics();
+    }
+    
+    // 解析Wiktionary响应
+    function parseWiktionaryResponse(data) {
+        const result = { uk: '', us: '' };
+        
+        try {
+            if (data && data.en && Array.isArray(data.en)) {
+                for (const entry of data.en) {
+                    if (entry.definitions && Array.isArray(entry.definitions)) {
+                        for (const def of entry.definitions) {
+                            const text = def.definition || '';
+                            // 查找IPA音标模式
+                            const ipaMatch = text.match(/\/([^\/]+)\//);
+                            if (ipaMatch) {
+                                const phonetic = `/${ipaMatch[1]}/`;
+                                if (!result.uk) result.uk = phonetic;
+                                if (!result.us) result.us = phonetic;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('解析Wiktionary响应失败:', error);
+        }
+        
+        return result;
+    }
+    
+    // 转换为英式音标符号
+    function simplifyPhonetic(phoneticText) {
+        // 英式音标符号转换映射
+        const britishPhoneticMap = {
+            // 基本元音
+            'ɹ': 'r',         // 倒r -> 普通r
+            'æ': 'æ',         // 保持æ符号（英式常用）
+            'ɑː': 'ɑ:',       // 长a音
+            'ɒ': 'ɔ',         // 短o音
+            'ɔː': 'ɔ:',       // 长o音
+            'ʌ': 'ʌ',         // 保持楔形符号
+            'ɜː': 'ɜ:',       // 长e音
+            'ə': 'ə',         // 保持中性元音
+            'ɪ': 'ɪ',         // 保持短i
+            'iː': 'i:',       // 长i音
+            'ʊ': 'ʊ',         // 保持短u
+            'uː': 'u:',       // 长u音
+            'eɪ': 'eɪ',       // 双元音ei
+            'aɪ': 'aɪ',       // 双元音ai
+            'ɔɪ': 'ɔɪ',       // 双元音oi
+            'aʊ': 'aʊ',       // 双元音au
+            'əʊ': 'əʊ',       // 双元音ou（英式）
+            'ɪə': 'ɪə',       // 双元音ia
+            'eə': 'eə',       // 双元音ea
+            'ʊə': 'ʊə',       // 双元音ua
+            
+            // 辅音
+            'θ': 'θ',         // 保持theta
+            'ð': 'ð',         // 保持eth
+            'ʃ': 'ʃ',         // 保持esh
+            'ʒ': 'ʒ',         // 保持ezh
+            'ʧ': 'tʃ',        // ch音
+            'ʤ': 'dʒ',        // j音
+            'ŋ': 'ŋ',         // 保持eng
+            'j': 'j',         // y音
+            'w': 'w',         // w音
+            
+            // 重音和长音符号
+            'ː': ':',         // 长音符号
+            'ˈ': "'",         // 主重音
+            'ˌ': ',',         // 次重音
+            
+            // 美式特有音素转换为英式
+            'ɚ': 'ə',         // 美式r化元音 -> 中性元音
+            'ɝ': 'ɜ:',        // 美式r化元音 -> 英式长e音
+            'ɑr': 'ɑ:',       // 美式ar -> 英式长a
+            'ɔr': 'ɔ:',       // 美式or -> 英式长o
+            'ɛr': 'eə',       // 美式er -> 英式ea双元音
+            'ɪr': 'ɪə',       // 美式ir -> 英式ia双元音
+            'ʊr': 'ʊə',       // 美式ur -> 英式ua双元音
+        };
+        
+        let result = phoneticText;
+        
+        // 按照长到短的顺序替换，避免部分匹配问题
+        const sortedKeys = Object.keys(britishPhoneticMap).sort((a, b) => b.length - a.length);
+        
+        for (const ipaSymbol of sortedKeys) {
+            const britishSymbol = britishPhoneticMap[ipaSymbol];
+            // 使用全局替换
+            result = result.replace(new RegExp(ipaSymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), britishSymbol);
+        }
+        
+        return result;
+    }
+    
+    // 设置默认音标显示
+    function setDefaultPhonetics() {
+        document.getElementById('uk-phonetic').textContent = '[点击播放英式发音]';
+        document.getElementById('us-phonetic').textContent = '[点击播放美式发音]';
+    }
+    
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', function() {
         initializeAudio();
         processDefinitionContent();
-        processExamplesContent();
+        processPhoneticContent();
         getUserInputFromFront();
         
         // 清除localStorage中的用户输入（避免影响下一张卡片）

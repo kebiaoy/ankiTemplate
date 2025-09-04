@@ -415,7 +415,7 @@
         // 确保下拉菜单不会比触发元素小太多，但也不会过宽
         const triggerWidth = triggerElement.offsetWidth;
         const minMenuWidth = Math.max(triggerWidth, 80); // 最小宽度为触发元素宽度或80px
-        const maxMenuWidth = Math.min(maxWidth + 20, 300); // 最大宽度限制为300px，加20px的缓冲
+        const maxMenuWidth = Math.min(maxWidth + 20, 500); // 最大宽度限制为300px，加20px的缓冲
         
         const finalWidth = Math.max(minMenuWidth, Math.min(maxMenuWidth, maxWidth + 20));
         

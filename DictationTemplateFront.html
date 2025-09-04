@@ -1,0 +1,540 @@
+<style>
+    body {
+        font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .dictation-container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 600px;
+        width: 90%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dictation-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    .header {
+        margin-bottom: 30px;
+    }
+
+    .title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .subtitle {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    .audio-section {
+        margin: 40px 0;
+        padding: 30px;
+        background: #f8faff;
+        border-radius: 15px;
+        border: 2px dashed #dde4ff;
+        position: relative;
+    }
+
+    .audio-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .play-button {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 50%;
+        width: 80px;
+        height: 80px;
+        color: white;
+        font-size: 30px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .play-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .play-button:active {
+        transform: scale(0.95);
+    }
+
+    .play-button.playing {
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+        50% { box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6); }
+        100% { box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+    }
+
+    .accent-selector {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .accent-button {
+        padding: 10px 20px;
+        border: 2px solid #667eea;
+        border-radius: 25px;
+        background: white;
+        color: #667eea;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .accent-button.active {
+        background: #667eea;
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .accent-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .audio-instruction {
+        font-size: 14px;
+        color: #888;
+        font-style: italic;
+    }
+
+    .input-section {
+        margin: 30px 0;
+    }
+
+    .word-input {
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 18px;
+        border: 2px solid #e0e6ff;
+        border-radius: 10px;
+        text-align: center;
+        font-family: inherit;
+        transition: all 0.3s ease;
+        background: #fafbff;
+    }
+
+    .word-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+    }
+
+    .word-input::placeholder {
+        color: #bbb;
+        font-style: italic;
+    }
+
+    .controls {
+        margin-top: 30px;
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+
+    .control-button {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .replay-button {
+        background: #f1f3ff;
+        color: #667eea;
+        border: 1px solid #e0e6ff;
+    }
+
+    .replay-button:hover {
+        background: #e0e6ff;
+        transform: translateY(-1px);
+    }
+
+    .clear-button {
+        background: #fff1f0;
+        color: #ff4757;
+        border: 1px solid #ffd6d3;
+    }
+
+    .clear-button:hover {
+        background: #ffd6d3;
+        transform: translateY(-1px);
+    }
+
+    .hidden-audio {
+        display: none;
+    }
+
+    .pronunciation-info {
+        margin-top: 15px;
+        font-size: 12px;
+        color: #999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .speed-control {
+        margin-top: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .speed-slider {
+        width: 100px;
+        margin: 0 10px;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 600px) {
+        .dictation-container {
+            padding: 25px;
+            margin: 10px;
+        }
+        
+        .title {
+            font-size: 24px;
+        }
+        
+        .play-button {
+            width: 70px;
+            height: 70px;
+            font-size: 25px;
+        }
+        
+        .accent-selector {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .controls {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="dictation-container">
+    <div class="header">
+        <div class="title">
+            🎧 单词听写练习
+        </div>
+        <div class="subtitle">仔细听发音，在下方输入您听到的单词或词组</div>
+    </div>
+
+    <div class="audio-section">
+        <div class="accent-selector">
+            <div class="accent-button active" id="uk-accent" onclick="setAccent('uk')">
+                🇬🇧 英式发音
+            </div>
+            <div class="accent-button" id="us-accent" onclick="setAccent('us')">
+                🇺🇸 美式发音
+            </div>
+        </div>
+
+        <div class="audio-controls">
+            <button class="play-button" id="play-btn" onclick="playAudio()">
+                ▶️
+            </button>
+        </div>
+
+        <div class="speed-control">
+            <span>播放速度:</span>
+            <input type="range" id="speed-slider" class="speed-slider" min="0.5" max="1.5" step="0.1" value="1.0" onchange="setPlaybackSpeed(this.value)">
+            <span id="speed-value">1.0x</span>
+        </div>
+
+        <div class="pronunciation-info">
+            💡 提示：可以多次播放，调整播放速度来帮助理解
+        </div>
+
+        <div class="audio-instruction">
+            点击上方播放按钮开始听写练习
+        </div>
+    </div>
+
+    <div class="input-section">
+        <input type="text" 
+               class="word-input" 
+               id="word-input" 
+               placeholder="请输入您听到的单词或词组..."
+               autocomplete="off"
+               onkeypress="handleKeyPress(event)">
+    </div>
+
+    <div class="controls">
+        <button class="control-button replay-button" onclick="playAudio()">
+            🔄 重新播放
+        </button>
+        <button class="control-button clear-button" onclick="clearInput()">
+            🗑️ 清空输入
+        </button>
+    </div>
+
+    <!-- 隐藏的音频元素 -->
+    <audio id="uk-audio" class="hidden-audio" preload="auto">
+        <!-- 英式发音音频将通过JavaScript设置 -->
+    </audio>
+    <audio id="us-audio" class="hidden-audio" preload="auto">
+        <!-- 美式发音音频将通过JavaScript设置 -->
+    </audio>
+</div>
+
+<script>
+    // 全局变量
+    let currentAccent = 'uk';
+    let currentAudio = null;
+    let playbackSpeed = 1.0;
+    
+    // 从Front字段获取单词
+    const frontWord = `{{Front}}`.trim();
+    
+    // 初始化音频
+    function initializeAudio() {
+        const ukAudio = document.getElementById('uk-audio');
+        const usAudio = document.getElementById('us-audio');
+        
+        if (frontWord) {
+            // 设置音频源 - 假设音频文件命名格式为: [单词]_uk.mp3 和 [单词]_us.mp3
+            // 或者使用在线TTS服务
+            ukAudio.src = getAudioUrl(frontWord, 'uk');
+            usAudio.src = getAudioUrl(frontWord, 'us');
+        }
+        
+        // 设置音频事件监听器
+        [ukAudio, usAudio].forEach(audio => {
+            audio.addEventListener('loadstart', () => {
+                console.log('开始加载音频');
+            });
+            
+            audio.addEventListener('canplay', () => {
+                console.log('音频可以播放');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                console.error('音频加载错误:', e);
+                showError('音频加载失败，请检查音频文件是否存在');
+            });
+            
+            audio.addEventListener('ended', () => {
+                const playBtn = document.getElementById('play-btn');
+                playBtn.textContent = '▶️';
+                playBtn.classList.remove('playing');
+            });
+        });
+    }
+    
+    // 获取音频URL
+    function getAudioUrl(word, accent) {
+        // 方法1: 使用本地音频文件
+        // return `${word}_${accent}.mp3`;
+        
+        // 方法2: 使用在线TTS服务
+        if (accent === 'uk') {
+            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=1`;
+        } else {
+            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`;
+        }
+        
+        // 方法3: 使用Google TTS (备选)
+        // const lang = accent === 'uk' ? 'en-GB' : 'en-US';
+        // return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(word)}`;
+    }
+    
+    // 设置发音类型
+    function setAccent(accent) {
+        currentAccent = accent;
+        
+        // 更新按钮状态
+        document.getElementById('uk-accent').classList.toggle('active', accent === 'uk');
+        document.getElementById('us-accent').classList.toggle('active', accent === 'us');
+        
+        // 停止当前播放
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+        
+        // 更新播放按钮状态
+        const playBtn = document.getElementById('play-btn');
+        playBtn.textContent = '▶️';
+        playBtn.classList.remove('playing');
+    }
+    
+    // 播放音频
+    function playAudio() {
+        const audioId = currentAccent === 'uk' ? 'uk-audio' : 'us-audio';
+        const audio = document.getElementById(audioId);
+        const playBtn = document.getElementById('play-btn');
+        
+        if (currentAudio && !currentAudio.paused) {
+            // 如果有音频在播放，先停止
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+        
+        currentAudio = audio;
+        audio.playbackRate = playbackSpeed;
+        
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                playBtn.textContent = '⏸️';
+                playBtn.classList.add('playing');
+            }).catch(error => {
+                console.error('播放失败:', error);
+                showError('播放失败，请检查音频文件');
+                playBtn.textContent = '▶️';
+                playBtn.classList.remove('playing');
+            });
+        }
+    }
+    
+    // 设置播放速度
+    function setPlaybackSpeed(speed) {
+        playbackSpeed = parseFloat(speed);
+        document.getElementById('speed-value').textContent = speed + 'x';
+        
+        if (currentAudio) {
+            currentAudio.playbackRate = playbackSpeed;
+        }
+    }
+    
+    // 清空输入
+    function clearInput() {
+        document.getElementById('word-input').value = '';
+        document.getElementById('word-input').focus();
+    }
+    
+    // 处理按键事件
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            // 保存用户输入到localStorage，供背面模板使用
+            const userInput = event.target.value.trim();
+            if (userInput) {
+                localStorage.setItem('dictation_user_input', userInput);
+                console.log('用户输入已保存:', userInput);
+            }
+        }
+    }
+    
+    // 保存用户输入
+    function saveUserInput() {
+        const userInput = document.getElementById('word-input').value.trim();
+        if (userInput) {
+            localStorage.setItem('dictation_user_input', userInput);
+        }
+    }
+    
+    // 显示错误信息
+    function showError(message) {
+        const instructionElement = document.querySelector('.audio-instruction');
+        const originalText = instructionElement.textContent;
+        
+        instructionElement.textContent = '❌ ' + message;
+        instructionElement.style.color = '#ff4757';
+        
+        setTimeout(() => {
+            instructionElement.textContent = originalText;
+            instructionElement.style.color = '#888';
+        }, 3000);
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAudio();
+        
+        // 聚焦到输入框
+        document.getElementById('word-input').focus();
+        
+        // 检查是否有单词内容
+        if (!frontWord) {
+            showError('未检测到单词内容，请确保Front字段不为空');
+        }
+        
+        // 添加键盘快捷键
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey || event.metaKey) {
+                switch(event.key) {
+                    case ' ':
+                        event.preventDefault();
+                        playAudio();
+                        break;
+                    case 'r':
+                        event.preventDefault();
+                        clearInput();
+                        break;
+                }
+            }
+        });
+        
+        // 监听输入框失焦事件，自动保存用户输入
+        document.getElementById('word-input').addEventListener('blur', saveUserInput);
+        
+        // 监听页面卸载事件，确保用户输入被保存
+        window.addEventListener('beforeunload', saveUserInput);
+        
+        // 监听Anki的翻页事件（如果可用）
+        if (window.pycmd) {
+            const originalPycmd = window.pycmd;
+            window.pycmd = function(cmd) {
+                if (cmd === 'ans' || cmd.startsWith('ease')) {
+                    saveUserInput();
+                }
+                return originalPycmd.call(this, cmd);
+            };
+        }
+    });
+</script>

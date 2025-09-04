@@ -340,8 +340,24 @@
 </div>
 
 <script>
-    // 获取单词和其他字段内容
-    const frontWord = `{{Front}}`.trim();
+    // HTML解码和清理函数
+    function cleanHtmlText(text) {
+        if (!text) return '';
+        
+        return text
+            .replace(/&nbsp;/g, ' ')    // 将&nbsp;转换为普通空格
+            .replace(/&amp;/g, '&')     // 处理&符号
+            .replace(/&lt;/g, '<')      // 处理<符号
+            .replace(/&gt;/g, '>')      // 处理>符号
+            .replace(/&quot;/g, '"')    // 处理引号
+            .replace(/&#39;/g, "'")     // 处理单引号
+            .replace(/&apos;/g, "'")    // 处理单引号(另一种格式)
+            .trim()                     // 去除首尾空格
+            .replace(/\s+/g, ' ');      // 将多个空格合并为单个空格
+    }
+    
+    // 获取单词和其他字段内容，处理多余空格和HTML实体
+    const frontWord = cleanHtmlText(`{{Front}}`);
     const definitionContent = `{{Definition}}`.trim();
     
     // 初始化音频
@@ -349,9 +365,25 @@
         const ukAudio = document.getElementById('uk-audio');
         const usAudio = document.getElementById('us-audio');
         
-        if (frontWord) {
-            ukAudio.src = getAudioUrl(frontWord, 'uk');
-            usAudio.src = getAudioUrl(frontWord, 'us');
+        if (frontWord && frontWord.trim() !== '') {
+            console.log(`背面初始化音频，单词: "${frontWord}"`);
+            
+            const ukUrl = getAudioUrl(frontWord, 'uk');
+            const usUrl = getAudioUrl(frontWord, 'us');
+            
+            if (ukUrl) {
+                ukAudio.src = ukUrl;
+            } else {
+                console.error('背面无法生成英式发音URL');
+            }
+            
+            if (usUrl) {
+                usAudio.src = usUrl;
+            } else {
+                console.error('背面无法生成美式发音URL');
+            }
+        } else {
+            console.warn('背面Front字段为空或无效，无法初始化音频');
         }
         
         // 设置音频事件监听器
@@ -364,10 +396,30 @@
     
     // 获取音频URL（与正面模板相同的逻辑）
     function getAudioUrl(word, accent) {
-        if (accent === 'uk') {
-            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=1`;
-        } else {
-            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`;
+        // 验证输入
+        if (!word || word.trim() === '') {
+            console.error('获取音频URL失败: 单词为空');
+            return '';
+        }
+        
+        // 清理单词，确保没有多余空格和HTML实体
+        const cleanWord = cleanHtmlText(word);
+        console.log(`背面获取音频URL: 原始单词="${word}", 清理后="${cleanWord}", 发音="${accent}"`);
+        
+        try {
+            const encodedWord = encodeURIComponent(cleanWord);
+            if (accent === 'uk') {
+                const url = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=1`;
+                console.log(`背面生成英式发音URL: ${url}`);
+                return url;
+            } else {
+                const url = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=2`;
+                console.log(`背面生成美式发音URL: ${url}`);
+                return url;
+            }
+        } catch (error) {
+            console.error('背面生成音频URL时发生错误:', error);
+            return '';
         }
     }
     

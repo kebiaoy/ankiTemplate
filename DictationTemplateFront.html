@@ -337,19 +337,53 @@
     let currentAudio = null;
     let playbackSpeed = 1.0;
     
-    // 从Front字段获取单词
-    const frontWord = `{{Front}}`.trim();
+    // HTML解码和清理函数
+    function cleanHtmlText(text) {
+        if (!text) return '';
+        
+        return text
+            .replace(/&nbsp;/g, ' ')    // 将&nbsp;转换为普通空格
+            .replace(/&amp;/g, '&')     // 处理&符号
+            .replace(/&lt;/g, '<')      // 处理<符号
+            .replace(/&gt;/g, '>')      // 处理>符号
+            .replace(/&quot;/g, '"')    // 处理引号
+            .replace(/&#39;/g, "'")     // 处理单引号
+            .replace(/&apos;/g, "'")    // 处理单引号(另一种格式)
+            .trim()                     // 去除首尾空格
+            .replace(/\s+/g, ' ');      // 将多个空格合并为单个空格
+    }
+    
+    // 从Front字段获取单词，处理多余空格和HTML实体
+    const frontWord = cleanHtmlText(`{{Front}}`);
     
     // 初始化音频
     function initializeAudio() {
         const ukAudio = document.getElementById('uk-audio');
         const usAudio = document.getElementById('us-audio');
         
-        if (frontWord) {
-            // 设置音频源 - 假设音频文件命名格式为: [单词]_uk.mp3 和 [单词]_us.mp3
-            // 或者使用在线TTS服务
-            ukAudio.src = getAudioUrl(frontWord, 'uk');
-            usAudio.src = getAudioUrl(frontWord, 'us');
+        if (frontWord && frontWord.trim() !== '') {
+            console.log(`初始化音频，单词: "${frontWord}"`);
+            
+            // 设置音频源
+            const ukUrl = getAudioUrl(frontWord, 'uk');
+            const usUrl = getAudioUrl(frontWord, 'us');
+            
+            if (ukUrl) {
+                ukAudio.src = ukUrl;
+            } else {
+                console.error('无法生成英式发音URL');
+                showError('英式发音URL生成失败');
+            }
+            
+            if (usUrl) {
+                usAudio.src = usUrl;
+            } else {
+                console.error('无法生成美式发音URL');
+                showError('美式发音URL生成失败');
+            }
+        } else {
+            console.warn('Front字段为空或无效，无法初始化音频');
+            showError('未检测到有效的单词内容');
         }
         
         // 设置音频事件监听器
@@ -377,19 +411,39 @@
     
     // 获取音频URL
     function getAudioUrl(word, accent) {
+        // 验证输入
+        if (!word || word.trim() === '') {
+            console.error('获取音频URL失败: 单词为空');
+            return '';
+        }
+        
+        // 清理单词，确保没有多余空格和HTML实体
+        const cleanWord = cleanHtmlText(word);
+        console.log(`获取音频URL: 原始单词="${word}", 清理后="${cleanWord}", 发音="${accent}"`);
+        
         // 方法1: 使用本地音频文件
-        // return `${word}_${accent}.mp3`;
+        // return `${cleanWord}_${accent}.mp3`;
         
         // 方法2: 使用在线TTS服务
-        if (accent === 'uk') {
-            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=1`;
-        } else {
-            return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`;
+        try {
+            const encodedWord = encodeURIComponent(cleanWord);
+            if (accent === 'uk') {
+                const url = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=1`;
+                console.log(`生成英式发音URL: ${url}`);
+                return url;
+            } else {
+                const url = `https://dict.youdao.com/dictvoice?audio=${encodedWord}&type=2`;
+                console.log(`生成美式发音URL: ${url}`);
+                return url;
+            }
+        } catch (error) {
+            console.error('生成音频URL时发生错误:', error);
+            return '';
         }
         
         // 方法3: 使用Google TTS (备选)
         // const lang = accent === 'uk' ? 'en-GB' : 'en-US';
-        // return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(word)}`;
+        // return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(cleanWord)}`;
     }
     
     // 设置发音类型
@@ -496,8 +550,8 @@
     document.addEventListener('DOMContentLoaded', function() {
         initializeAudio();
         
-        // 聚焦到输入框
-        document.getElementById('word-input').focus();
+        // 移除自动聚焦，避免抢夺浏览器焦点
+        // document.getElementById('word-input').focus();
         
         // 检查是否有单词内容
         if (!frontWord) {
